@@ -1,0 +1,158 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.coordinatorlayout.widget.CoordinatorLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="?android:attr/colorBackground"
+    tools:context=".MainActivity">
+
+    <com.google.android.material.appbar.AppBarLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="?attr/colorPrimary"
+        android:theme="@style/ThemeOverlay.MaterialComponents.Dark.ActionBar">
+
+        <com.google.android.material.appbar.MaterialToolbar
+            android:id="@+id/toolbar"
+            android:layout_width="match_parent"
+            android:layout_height="?attr/actionBarSize"
+            app:title="🔔 Notification HUD" />
+
+    </com.google.android.material.appbar.AppBarLayout>
+
+    <androidx.core.widget.NestedScrollView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        app:layout_behavior="@string/appbar_scrolling_view_behavior">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="16dp">
+
+            <!-- Status Card -->
+            <com.google.android.material.card.MaterialCardView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="16dp"
+                app:cardElevation="4dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android.padding="16dp">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginBottom="8dp"
+                        android:text="📊 Status"
+                        android:textAppearance="?attr/textAppearanceHeadline6" />
+
+                    <TextView
+                        android:id="@+id/statusText"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="⏳ Waiting for setup..."
+                        android:textAppearance="?attr/textAppearanceBody2"
+                        android:lineSpacingExtra="4dp" />
+
+                </LinearLayout>
+
+            </com.google.android.material.card.MaterialCardView>
+
+            <!-- Actions Card -->
+            <com.google.android.material.card.MaterialCardView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="16dp"
+                app:cardElevation="4dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="16dp">
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnEnableNotification"
+                        style="@style/Widget.MaterialComponents.Button"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="🔔 Enable Notification Access"
+                        android:layout_marginBottom="8dp"/>
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnScanBLE"
+                        style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="🔍 Scan for ESP32" />
+
+                </LinearLayout>
+
+            </com.google.android.material.card.MaterialCardView>
+
+            <!-- Send Test Message Card -->
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/sendTestMessageCard"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="16dp"
+                android:visibility="gone"
+                app:cardElevation="4dp"
+                tools:visibility="visible">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="16dp">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="✉️ Send Test Message"
+                        android:textAppearance="?attr/textAppearanceHeadline6"
+                        android:layout_marginBottom="8dp" />
+
+                    <com.google.android.material.textfield.TextInputLayout
+                        android:id="@+id/textField"
+                        style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:hint="Enter text to send">
+
+                        <com.google.android.material.textfield.TextInputEditText
+                            android:id="@+id/editText"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content" />
+
+                    </com.google.android.material.textfield.TextInputLayout>
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnSend"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_gravity="end"
+                        android:layout_marginTop="8dp"
+                        android:text="Send" />
+
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <!-- View Log Button -->
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnViewLog"
+                style="@style/Widget.MaterialComponents.Button.TextButton"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="📝 View Recent Activity" />
+
+        </LinearLayout>
+    </androidx.core.widget.NestedScrollView>
+
+</androidx.coordinatorlayout.widget.CoordinatorLayout>

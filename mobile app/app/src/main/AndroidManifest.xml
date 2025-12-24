@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <!-- Permissions -->
+    <uses-permission android:name="android.permission.BLUETOOTH" />
+    <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" />
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
+    <!-- For Android 12+ -->
+    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
+    <uses-permission android:name="android.permission.BLUETOOTH_SCAN" />
+
+    <!-- For Android 14+ (Foreground Service Type) -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_CONNECTED_DEVICE" />
+
+    <!-- Hardware feature -->
+    <uses-feature
+        android:name="android.hardware.bluetooth_le"
+        android:required="true" />
+
+    <application
+        android:allowBackup="true"
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:theme="@style/Theme.NotificationHUD"
+        android:supportsRtl="true">
+
+        <!-- Main Activity -->
+        <activity
+            android:name=".MainActivity"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <!-- Device Scan Activity -->
+        <activity
+            android:name=".DeviceScanActivity"
+            android:exported="false" />
+
+        <!-- Log Activity -->
+        <activity
+            android:name=".LogActivity"
+            android:exported="false" />
+
+        <!-- BLE Service -->
+        <service
+            android:name=".BLEService"
+            android:foregroundServiceType="connectedDevice"
+            android:exported="false" />
+
+        <!-- Notification Listener Service -->
+        <service
+            android:name=".NotificationListener"
+            android:label="@string/app_name"
+            android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE"
+            android:exported="true"
+            tools:ignore="ExportedService">
+            <intent-filter>
+                <action android:name="android.service.notification.NotificationListenerService" />
+            </intent-filter>
+        </service>
+
+    </application>
+
+</manifest>
