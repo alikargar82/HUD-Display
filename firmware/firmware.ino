@@ -11,9 +11,18 @@ TFT_eSPI tft = TFT_eSPI();
 // ===== تنظیمات فونت =====
 // اگر فونت فارسی دارید، اینجا آن را جایگزین کنید.
 // فعلاً از فونت‌های استاندارد بزرگ استفاده می‌کنیم.
-#define HUD_FONT_HUGE   &lv_font_montserrat_48  // برای ساعت
-#define HUD_FONT_LARGE  &lv_font_montserrat_28  // برای نام برنامه/فرستنده
-#define HUD_FONT_NORMAL &lv_font_montserrat_20  // برای متن پیام و استاتوس بار
+
+LV_FONT_DECLARE(vazir_20);
+LV_FONT_DECLARE(vazir_28);
+LV_FONT_DECLARE(vazir_48);
+LV_FONT_DECLARE(vazir_56);
+
+#define HUD_FONT_STATUS &lv_font_montserrat_20  // Original font with symbols
+
+#define HUD_FONT_EXTRA_HUGE   &vazir_56  // برای ساعت
+#define HUD_FONT_HUGE   &vazir_48  // برای ساعت
+#define HUD_FONT_LARGE  &vazir_28  // برای نام برنامه/فرستنده
+#define HUD_FONT_NORMAL &vazir_20  // برای متن پیام و استاتوس بار
 
 // ===== رنگ‌های نئونی (HUD Theme) =====
 // #define COLOR_BG            lv_color_hex(0x000000) // مشکی مطلق
@@ -50,6 +59,21 @@ TFT_eSPI tft = TFT_eSPI();
 uint32_t draw_buf[DRAW_BUF_SIZE / 4];
 lv_display_t * disp;
 
+
+// Function to detect if text contains Persian/Arabic characters
+bool isPersianText(const char* text) {
+    while (*text) {
+        unsigned char c = *text;
+        // Check for UTF-8 Persian/Arabic range (0x0600-0x06FF)
+        if (c == 0xD8 || c == 0xD9 || c == 0xDA || c == 0xDB) {
+            return true;
+        }
+        text++;
+    }
+    return false;
+}
+
+
 // ===== آبجکت‌های UI =====
 lv_obj_t * lbl_clock;       
 lv_obj_t * lbl_ble_status;  // متن/آیکون وضعیت بلوتوث
@@ -62,7 +86,7 @@ lv_obj_t * lbl_message;
 lv_obj_t * bar_timer; // متغیر سراسری جدید برای پراگرس بار
 
 // ===== متغیرهای وضعیت =====
-bool mirrorEnabled = true; // فعال بودن حالت آینه‌ای HUD
+bool mirrorEnabled = false; // فعال بودن حالت آینه‌ای HUD
 bool bleConnected = false;
 unsigned long popupTimer = 0;
 bool isPopupVisible = false;
@@ -79,8 +103,8 @@ int mockSecond = 45;
 // تابع ایجاد خط جداکننده افقی
 lv_obj_t* create_divider(lv_obj_t* parent) {
     lv_obj_t* line = lv_obj_create(parent);
-    lv_obj_set_size(line, LV_PCT(100), 2); // ارتفاع 2 پیکسل
-    lv_obj_set_style_bg_color(line, lv_color_hex(0x444444), 0); // رنگ خاکستری ملایم
+    lv_obj_set_size(line, LV_PCT(100), 3); // ارتفاع 2 پیکسل
+    lv_obj_set_style_bg_color(line, lv_color_hex(0x00FFFF), 0); // رنگ خاکستری ملایم
     lv_obj_set_style_border_width(line, 0, 0);
     return line;
 }
@@ -106,7 +130,6 @@ void update_ble_ui(bool connected) {
 //               لاجیک پارس کردن پیام
 // ==========================================
 void show_notification(String fullMsg) {
-    // فرمت ورودی: AppName|Sender|Message
     String appName = "NOTIFICATION";
     String sender = "System";
     String msgBody = fullMsg;
@@ -123,22 +146,39 @@ void show_notification(String fullMsg) {
         }
     }
 
-    // تنظیم متن‌ها
+    // Set text direction based on content
+    if (isPersianText(appName.c_str())) {
+        lv_obj_set_style_base_dir(lbl_app_name, LV_BASE_DIR_RTL, 0);
+    } else {
+        lv_obj_set_style_base_dir(lbl_app_name, LV_BASE_DIR_LTR, 0);
+    }
+    
+    if (isPersianText(sender.c_str())) {
+        lv_obj_set_style_base_dir(lbl_sender, LV_BASE_DIR_RTL, 0);
+    } else {
+        lv_obj_set_style_base_dir(lbl_sender, LV_BASE_DIR_LTR, 0);
+    }
+    
+    if (isPersianText(msgBody.c_str())) {
+        lv_obj_set_style_base_dir(lbl_message, LV_BASE_DIR_RTL, 0);
+    } else {
+        lv_obj_set_style_base_dir(lbl_message, LV_BASE_DIR_LTR, 0);
+    }
+
+    // Set text
     lv_label_set_text(lbl_app_name, appName.c_str());
     lv_label_set_text(lbl_sender, sender.c_str());
     lv_label_set_text(lbl_message, msgBody.c_str());
 
-    // نمایش پاپ‌آپ
+    // Show popup
     lv_obj_clear_flag(panel_popup, LV_OBJ_FLAG_HIDDEN);
-    
-    // اطمینان از قرار گرفتن پاپ‌آپ روی همه چیز (Layer Top)
     lv_obj_move_foreground(panel_popup);
 
     isPopupVisible = true;
     popupTimer = millis();
-    lv_bar_set_value(bar_timer, 100, LV_ANIM_OFF); // ریست کردن بار به 100%
-
+    lv_bar_set_value(bar_timer, 100, LV_ANIM_OFF);
 }
+
 
 // ==========================================
 //               مدیریت BLE
@@ -176,17 +216,17 @@ void build_ui() {
 
     // 1. وضعیت BLE (بالا راست با فاصله زیاد)
     lbl_ble_status = lv_label_create(scr);
-    lv_obj_set_style_text_font(lbl_ble_status, HUD_FONT_NORMAL, 0);
+    lv_obj_set_style_text_font(lbl_ble_status, HUD_FONT_STATUS, 0);
     lv_obj_align(lbl_ble_status, LV_ALIGN_TOP_RIGHT, -30, 30); 
     update_ble_ui(false);
 
     // 2. ساعت دیجیتال (دقیقاً وسط صفحه)
     lbl_clock = lv_label_create(scr);
     lv_label_set_text(lbl_clock, "12:59:45");
-    lv_obj_set_style_text_font(lbl_clock, HUD_FONT_HUGE, 0);
+    lv_obj_set_style_text_font(lbl_clock, HUD_FONT_EXTRA_HUGE, 0);
     lv_obj_set_style_text_color(lbl_clock, COLOR_ACCENT, 0);
     lv_obj_align(lbl_clock, LV_ALIGN_CENTER, 0, 0); // وسط دقیق
-    lv_obj_set_style_shadow_width(lbl_clock, 25, 0);
+    lv_obj_set_style_shadow_width(lbl_clock, 20, 0);
     lv_obj_set_style_shadow_color(lbl_clock, COLOR_ACCENT, 0);
 
     // 3. طراحی پاپ‌آپ
@@ -218,6 +258,7 @@ void build_ui() {
     lv_label_set_text(lbl_app_name, "Telegram");
     lv_obj_set_style_text_font(lbl_app_name, HUD_FONT_LARGE, 0);
     lv_obj_set_style_text_color(lbl_app_name, COLOR_TEXT_VALUE, 0);
+    lv_obj_set_style_base_dir(lbl_app_name, LV_BASE_DIR_AUTO, 0);
 
     create_divider(panel_popup);
 
@@ -239,6 +280,7 @@ void build_ui() {
     lv_label_set_text(lbl_sender, "Alert");
     lv_obj_set_style_text_font(lbl_sender, HUD_FONT_LARGE, 0);
     lv_obj_set_style_text_color(lbl_sender, COLOR_TEXT_VALUE, 0);
+    lv_obj_set_style_base_dir(lbl_sender, LV_BASE_DIR_AUTO, 0);
 
     create_divider(panel_popup);
 
@@ -335,6 +377,11 @@ void my_disp_flush(lv_display_t * disp_drv, const lv_area_t * area, uint8_t * px
 
 void setup() {
     Serial.begin(115200);
+    Serial.println("Font pointer check:");
+    Serial.printf("vazir_20: %p\n", &vazir_20);
+    Serial.printf("vazir_40: %p\n", &vazir_28);
+    Serial.printf("vazir_48: %p\n", &vazir_48);
+    
     lv_init();
     lv_tick_set_cb([]() { return millis(); });
 
