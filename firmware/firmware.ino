@@ -24,6 +24,17 @@ LV_FONT_DECLARE(vazir_56);
 #define HUD_FONT_LARGE  &vazir_28  // برای نام برنامه/فرستنده
 #define HUD_FONT_NORMAL &vazir_20  // برای متن پیام و استاتوس بار
 
+
+
+LV_IMG_DECLARE(telegram);
+LV_IMG_DECLARE(setting);
+LV_IMG_DECLARE(message);
+LV_IMG_DECLARE(phone);
+LV_IMG_DECLARE(notification);
+LV_IMG_DECLARE(instagram);
+LV_IMG_DECLARE(twitter);
+LV_IMG_DECLARE(whatsapp);
+
 // ===== رنگ‌های نئونی (HUD Theme) =====
 // #define COLOR_BG            lv_color_hex(0x000000) // مشکی مطلق
 // #define COLOR_ACCENT        lv_color_hex(0x00FFFF) // آبی سایان
@@ -74,6 +85,22 @@ bool isPersianText(const char* text) {
 }
 
 
+// Function to get icon based on app name
+const void* getAppIcon(String appName) {
+    appName.toLowerCase();  // Convert to lowercase for matching
+    
+    // Map app names to icons
+    if (appName.indexOf("telegram") >= 0) return &telegram;
+    if (appName.indexOf("whatsapp") >= 0) return &whatsapp;
+    if (appName.indexOf("instagram") >= 0) return &instagram;
+    if (appName.indexOf("messages") >= 0) return &message;
+    if (appName.indexOf("twitter") >= 0 || appName.indexOf("x") >= 0) return &twitter;
+    if (appName.indexOf("phone") >= 0) return &phone;
+    if (appName.indexOf("settings") >= 0) return &setting;
+
+    return &notification;
+}
+
 // ===== آبجکت‌های UI =====
 lv_obj_t * lbl_clock;       
 lv_obj_t * lbl_ble_status;  // متن/آیکون وضعیت بلوتوث
@@ -84,7 +111,7 @@ lv_obj_t * lbl_app_name;
 lv_obj_t * lbl_sender;      
 lv_obj_t * lbl_message;     
 lv_obj_t * bar_timer; // متغیر سراسری جدید برای پراگرس بار
-
+lv_obj_t * img_app_icon;
 // ===== متغیرهای وضعیت =====
 bool mirrorEnabled = false; // فعال بودن حالت آینه‌ای HUD
 bool bleConnected = false;
@@ -145,6 +172,9 @@ void show_notification(String fullMsg) {
             msgBody = fullMsg.substring(firstPipe + 1);
         }
     }
+
+    const void* icon = getAppIcon(appName);
+    lv_img_set_src(img_app_icon, icon);
 
     // Set text direction based on content
     if (isPersianText(appName.c_str())) {
@@ -240,7 +270,7 @@ void build_ui() {
     lv_obj_set_style_pad_all(panel_popup, 15, 0);
     lv_obj_set_flex_flow(panel_popup, LV_FLEX_FLOW_COLUMN);
 
-    // --- سطر اول: APP ---
+    // --- سطر اول: APP with ICON ---
     lv_obj_t* row_app = lv_obj_create(panel_popup);
     lv_obj_set_size(row_app, LV_PCT(100), LV_SIZE_CONTENT);
     lv_obj_set_style_bg_opa(row_app, LV_OPA_TRANSP, 0);
@@ -249,11 +279,18 @@ void build_ui() {
     lv_obj_set_flex_flow(row_app, LV_FLEX_FLOW_ROW);
     lv_obj_set_flex_align(row_app, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
 
+    // "APP :" label
     lv_obj_t* lbl_static_app = lv_label_create(row_app);
     lv_label_set_text(lbl_static_app, "APP : ");
     lv_obj_set_style_text_font(lbl_static_app, HUD_FONT_NORMAL, 0);
     lv_obj_set_style_text_color(lbl_static_app, COLOR_ACCENT, 0);
 
+    // App icon (NEW!)
+    img_app_icon = lv_img_create(row_app); 
+    lv_img_set_src(img_app_icon, &notification);  // Default icon initially
+    lv_obj_set_style_pad_right(img_app_icon, 10, 0);  // Space between icon and text
+
+    // App name
     lbl_app_name = lv_label_create(row_app);
     lv_label_set_text(lbl_app_name, "Telegram");
     lv_obj_set_style_text_font(lbl_app_name, HUD_FONT_LARGE, 0);
