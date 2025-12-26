@@ -62,7 +62,7 @@ lv_obj_t * lbl_message;
 lv_obj_t * bar_timer; // متغیر سراسری جدید برای پراگرس بار
 
 // ===== متغیرهای وضعیت =====
-bool mirrorEnabled = false; // فعال بودن حالت آینه‌ای HUD
+bool mirrorEnabled = true; // فعال بودن حالت آینه‌ای HUD
 bool bleConnected = false;
 unsigned long popupTimer = 0;
 bool isPopupVisible = false;
@@ -295,31 +295,43 @@ void my_disp_flush(lv_display_t * disp_drv, const lv_area_t * area, uint8_t * px
 
 #if LV_USE_TFT_ESPI
     tft.startWrite();
-    tft.setAddrWindow(area->x1, area->y1, w, h);
+
     if (!mirrorEnabled) {
+        // حالت عادی: همان‌جا که LVGL می‌گوید چاپ کن
+        tft.setAddrWindow(area->x1, area->y1, w, h);
         tft.pushPixels((uint16_t *)px_map, w * h);
     } else {
-        // الگوریتم میرور (Mirror) برای HUD
+        // === حالت آینه‌ای (HUD) ===
+        
+        // 1. محاسبه مختصات قرینه شده
+        // در حالت میرور، سمت راستِ محدوده فعلی (x2) می‌شود سمت چپِ محدوده فیزیکی روی ال‌سی‌دی
+        int32_t mirrored_x1 = TFT_HOR_RES - 1 - area->x2;
+
+        // تنظیم پنجره در مختصات جدید (قرینه)
+        tft.setAddrWindow(mirrored_x1, area->y1, w, h);
+
+        // بافر استاتیک برای سرعت بالا (جلوگیری از پر شدن رم)
+        static uint16_t line_buf[TFT_HOR_RES]; 
         uint16_t * pixels = (uint16_t *)px_map;
-        uint16_t * line_buf = (uint16_t *)malloc(w * sizeof(uint16_t));
-        if(line_buf) {
-            for (uint32_t y = 0; y < h; y++) {
-                uint32_t row_offset = y * w;
-                for (uint32_t x = 0; x < w; x++) {
-                    // معکوس کردن پیکسل‌ها در هر سطر
-                    line_buf[x] = pixels[row_offset + (w - 1 - x)];
-                }
-                tft.pushPixels(line_buf, w);
+
+        for (uint32_t y = 0; y < h; y++) {
+            uint32_t row_offset = y * w;
+            
+            // 2. معکوس کردن چیدمان پیکسل‌های هر خط
+            for (uint32_t x = 0; x < w; x++) {
+                line_buf[x] = pixels[row_offset + (w - 1 - x)];
             }
-            free(line_buf);
-        } else {
-             tft.pushPixels((uint16_t *)px_map, w * h);
+            
+            // ارسال به مختصات قرینه شده
+            tft.pushPixels(line_buf, w);
         }
     }
     tft.endWrite();
 #endif
     lv_display_flush_ready(disp_drv);
 }
+
+
 
 void setup() {
     Serial.begin(115200);
