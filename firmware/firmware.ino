@@ -155,7 +155,7 @@ volatile bool doShowNotification = false; // Flag
 String pendingNotificationMessage = "";   // Buffer to hold the message
 
 // ===== متغیرهای وضعیت =====
-bool mirrorEnabled = true; // فعال بودن حالت آینه‌ای HUD
+bool mirrorEnabled = false; // فعال بودن حالت آینه‌ای HUD
 bool bleConnected = false;
 unsigned long popupTimer = 0;
 bool isPopupVisible = false;
