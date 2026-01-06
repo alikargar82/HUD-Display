@@ -29,6 +29,7 @@ import androidx.activity.result.contract.ActivityResultContracts;
 
 import com.google.android.material.card.MaterialCardView;
 import com.google.android.material.textfield.TextInputEditText;
+import com.google.android.material.switchmaterial.SwitchMaterial;
 
 public class MainActivity extends AppCompatActivity {
     private static final int REQUEST_BLUETOOTH_PERMISSIONS = 1;
@@ -37,6 +38,10 @@ public class MainActivity extends AppCompatActivity {
     private TextView statusText;
     private TextInputEditText editText;
     private MaterialCardView sendTestMessageCard;
+    private MaterialCardView disconnectCard;
+    private SwitchMaterial mirrorModeToggle;
+    private Button btnDisconnect;
+    private TextView locationStatusText;
 
     // Bluetooth
     private BluetoothAdapter bluetoothAdapter;
@@ -44,6 +49,7 @@ public class MainActivity extends AppCompatActivity {
     private BroadcastReceiver bleStatusReceiver;
     private BLEService bleService;
     private boolean isBound = false;
+    private boolean mirrorModeEnabled = false;
 
     // Activity Result Launcher for Bluetooth enable
     private ActivityResultLauncher<Intent> bluetoothEnableLauncher;
@@ -89,19 +95,33 @@ public class MainActivity extends AppCompatActivity {
 
     private void initUI() {
         statusText = findViewById(R.id.statusText);
+        locationStatusText = findViewById(R.id.locationStatusText);
         sendTestMessageCard = findViewById(R.id.sendTestMessageCard);
+        disconnectCard = findViewById(R.id.disconnectCard);
+        mirrorModeToggle = findViewById(R.id.mirrorModeToggle);
+        btnDisconnect = findViewById(R.id.btnDisconnect);
 
         Button btnEnableNotification = findViewById(R.id.btnEnableNotification);
         Button btnScanBLE = findViewById(R.id.btnScanBLE);
         Button btnSend = findViewById(R.id.btnSend);
         Button btnViewLog = findViewById(R.id.btnViewLog);
+        Button btnFilterApps = findViewById(R.id.btnFilterApps);
+        Button btnClearLogs = findViewById(R.id.btnClearLogs);
         editText = findViewById(R.id.editText);
+
+        // Load mirror mode state
+        mirrorModeEnabled = prefs.getBoolean("mirror_mode_enabled", false);
+        mirrorModeToggle.setChecked(mirrorModeEnabled);
 
         // Button listeners
         btnEnableNotification.setOnClickListener(v -> enableNotificationAccess());
         btnScanBLE.setOnClickListener(v -> scanForDevices());
         btnSend.setOnClickListener(v -> sendTestMessage());
         btnViewLog.setOnClickListener(v -> startActivity(new Intent(this, LogActivity.class)));
+        btnFilterApps.setOnClickListener(v -> startActivity(new Intent(this, FilterAppsActivity.class)));
+        btnClearLogs.setOnClickListener(v -> clearAllLogs());
+        btnDisconnect.setOnClickListener(v -> disconnectFromDevice());
+        mirrorModeToggle.setOnCheckedChangeListener((buttonView, isChecked) -> onMirrorModeToggled(isChecked));
 
         bleStatusReceiver = new BroadcastReceiver() {
             @Override
@@ -114,6 +134,19 @@ public class MainActivity extends AppCompatActivity {
 
         // Check if service is running
         checkServiceStatus();
+    }
+
+    private void onMirrorModeToggled(boolean isChecked) {
+        mirrorModeEnabled = isChecked;
+        prefs.edit().putBoolean("mirror_mode_enabled", isChecked).apply();
+
+        String message = isChecked ? "|||enable-mirror-mode|||" : "|||disable-mirror-mode|||";
+        if (isBound && bleService != null) {
+            LoggerUtil.d("Sending mirror mode message: " + message);
+            bleService.sendData(message);
+        } else {
+            LoggerUtil.w("BLE Service not bound, cannot send mirror mode message");
+        }
     }
 
     private void initBluetooth() {
@@ -182,25 +215,34 @@ public class MainActivity extends AppCompatActivity {
             status += "• ❌ Notification access required\n";
         }
 
+        boolean hasLocationPermission = ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED;
+        if (hasLocationPermission) {
+            locationStatusText.setText("📍 Location Permission: ✅ Granted");
+        } else {
+            locationStatusText.setText("📍 Location Permission: ❌ Not Granted");
+        }
+
         if (bluetoothAdapter != null && bluetoothAdapter.isEnabled()) {
             status += "• ✅ Bluetooth enabled\n";
         } else {
             status += "• ❌ Bluetooth disabled\n";
         }
 
-        // SAFE CHECK: Make sure prefs is not null
         if (prefs != null) {
             String deviceName = prefs.getString("device_name", null);
             if (deviceName != null) {
                 status += "• 🔗 Connected to: " + deviceName + "\n";
                 sendTestMessageCard.setVisibility(View.VISIBLE);
+                disconnectCard.setVisibility(View.VISIBLE);
             } else {
                 status += "• 🔌 No device connected\n";
                 sendTestMessageCard.setVisibility(View.GONE);
+                disconnectCard.setVisibility(View.GONE);
             }
         } else {
             status += "• 🔌 No device connected\n";
             sendTestMessageCard.setVisibility(View.GONE);
+            disconnectCard.setVisibility(View.GONE);
         }
 
         statusText.setText(status);
@@ -266,6 +308,23 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    private void disconnectFromDevice() {
+        if (isBound && bleService != null) {
+            bleService.disconnect();
+            if (prefs != null) {
+                prefs.edit().remove("device_address").remove("device_name").apply();
+            }
+            updateStatus();
+            Toast.makeText(this, "Disconnected from ESP32", Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    private void clearAllLogs() {
+        LoggerUtil.clearLogs();
+        Toast.makeText(this, "Logs cleared", Toast.LENGTH_SHORT).show();
+        updateStatus();
+    }
+
     private void updateStatus() {
         checkServiceStatus();
     }
@@ -313,10 +372,18 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onDestroy() {
         super.onDestroy();
+
+        if (isBound && bleService != null) {
+            bleService.disconnect();
+        }
+
         if (isBound) {
             unbindService(serviceConnection);
             isBound = false;
         }
+
+        LoggerUtil.clearLogs();
+        LoggerUtil.d("MainActivity destroyed");
     }
 
 

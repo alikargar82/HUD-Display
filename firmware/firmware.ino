@@ -6,13 +6,15 @@
 #include <time.h>
 #include <DHT.h>
 
+
+
 //wifi setting
 const char* ssid = "starter";
 const char* password = "12345676";
 
 // NTP Server settings
 const char* ntpServer = "pool.ntp.org";
-const long gmtOffset_sec = 12600;  // Iran is UTC+3:30 = 3.5 * 3600
+const long gmtOffset_sec = 12605;  // Iran is UTC+3:30 = 3.5 * 3600
 const int daylightOffset_sec = 0;
 
 // --- SENSOR CONFIG ---
@@ -153,6 +155,9 @@ volatile bool bleStatusToDisplay = false; // State to show (Connected/Disconnect
 
 volatile bool doShowNotification = false; // Flag
 String pendingNotificationMessage = "";   // Buffer to hold the message
+
+volatile bool doToggleMirror = false;
+volatile bool targetMirrorState = false;
 
 // ===== متغیرهای وضعیت =====
 bool mirrorEnabled = false; // فعال بودن حالت آینه‌ای HUD
@@ -298,12 +303,26 @@ class MyCallbacks : public BLECharacteristicCallbacks {
     void onWrite(BLECharacteristic *pCharacteristic) override {
         String value = pCharacteristic->getValue(); 
         if (value.length() > 0) {
-            // DON'T call UI functions here!
-            pendingNotificationMessage = value; // Save message
-            doShowNotification = true;          // Trigger loop update
+            // Check for mirror mode commands
+            if (value == "|||enable-mirror-mode|||") {
+                targetMirrorState = true;
+                doToggleMirror = true;
+                Serial.println("Mirror mode enable requested");
+            }
+            else if (value == "|||disable-mirror-mode|||") {
+                targetMirrorState = false;
+                doToggleMirror = true;
+                Serial.println("Mirror mode disable requested");
+            }
+            else {
+                // Regular notification
+                pendingNotificationMessage = value;
+                doShowNotification = true;
+            }
         }
     }
 };
+
 
 
 // ==========================================
@@ -614,9 +633,9 @@ void setup() {
 
     // --- Hardware Init ---
     analogReadResolution(12);
+    analogSetPinAttenuation(PIN_LM35, ADC_2_5db);
     pinMode(PIN_LM35, INPUT);
     dht.begin();
-
     // Initialize NTP
     configTime(gmtOffset_sec, daylightOffset_sec, ntpServer);
  
@@ -684,6 +703,16 @@ void loop() {
         doUpdateBLE = false; // Reset flag
     }
 
+    // --- MIRROR MODE TOGGLE (NEW) ---
+    if (doToggleMirror) {
+        mirrorEnabled = targetMirrorState;
+        doToggleMirror = false;
+        
+        // Force full screen redraw to apply mirroring
+        lv_obj_invalidate(lv_screen_active());
+
+    }
+
     if (doShowNotification) {
         // Now it is safe to call LVGL functions
         show_notification(pendingNotificationMessage); 
@@ -719,7 +748,7 @@ void loop() {
         long sum = 0;
         for(int i=0; i<10; i++) { 
             sum += analogReadMilliVolts(PIN_LM35); 
-            delay(2); 
+            delay(5); 
         }
         float avgMv = sum / 10.0;
         // LM35 Formula: 10mV = 1 Degree Celsius

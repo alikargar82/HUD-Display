@@ -5,14 +5,19 @@ import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.ServiceConnection;
+import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.os.IBinder;
 import android.service.notification.NotificationListenerService;
 import android.service.notification.StatusBarNotification;
 
+import java.util.HashSet;
+import java.util.Set;
+
 public class NotificationListener extends NotificationListenerService {
     private BLEService bleService;
     private boolean isBound = false;
+    private SharedPreferences prefs;
 
     private final ServiceConnection serviceConnection = new ServiceConnection() {
         @Override
@@ -36,6 +41,7 @@ public class NotificationListener extends NotificationListenerService {
         super.onCreate();
         LoggerUtil.init(this);
         LoggerUtil.d("NotificationListener service created");
+        prefs = getSharedPreferences("FilteredApps", Context.MODE_PRIVATE);
         Intent intent = new Intent(this, BLEService.class);
         bindService(intent, serviceConnection, Context.BIND_AUTO_CREATE);
     }
@@ -53,6 +59,13 @@ public class NotificationListener extends NotificationListenerService {
     @Override
     public void onNotificationPosted(StatusBarNotification sbn) {
         if (sbn == null) return;
+
+        String packageName = sbn.getPackageName();
+
+        if (isAppFiltered(packageName)) {
+            LoggerUtil.logNotificationDropped("App is filtered: " + packageName);
+            return;
+        }
 
         if (!isBound || bleService == null) {
             LoggerUtil.logNotificationDropped("BLE service not bound");
@@ -73,7 +86,7 @@ public class NotificationListener extends NotificationListenerService {
             return;
         }
 
-        String appName = getAppDisplayName(sbn.getPackageName());
+        String appName = getAppDisplayName(packageName);
         String data = formatForESP32(appName, title, text);
 
         LoggerUtil.logNotificationReceived(appName, title, text);
@@ -81,6 +94,11 @@ public class NotificationListener extends NotificationListenerService {
 
         bleService.sendData(data);
         LoggerUtil.d("✓ Notification queued for sending to ESP32");
+    }
+
+    private boolean isAppFiltered(String packageName) {
+        Set<String> filteredApps = prefs.getStringSet("filtered_packages", new HashSet<>());
+        return filteredApps.contains(packageName);
     }
 
     private String cleanText(String text) {
